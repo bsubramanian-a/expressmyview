@@ -6,6 +6,8 @@ use App\Category;
 use App\Channel;
 use App\Podcast;
 use Illuminate\Http\Request;
+use App\LiveStream;
+use Illuminate\Support\Facades\Storage;
 
 class HomeController extends Controller
 {
@@ -69,8 +71,8 @@ class HomeController extends Controller
     {
         $id = $request->id;
         //        $categories = Category::where('status', 1)->withCount('videos')->get();
-        $popularChannels = Channel::where('status', 1)->whereNotIn('user_id', [$id])->orderBy('subscribers', 'DESC')->take(10)->get();
-        $latestVideoPodcasts = Podcast::where('privacy', 1)->where('file_type', "video")->whereNotIn('user_id', [$id])->orderBy('created_at', 'DESC')->take(4)->get();
+        $popularChannels = Channel::where('status', 1)->orderBy('subscribers', 'DESC')->take(10)->get();
+        $latestVideoPodcasts = Podcast::where('privacy', 1)->where('file_type', "video")->orderBy('created_at', 'DESC')->take(4)->get();
         // $liveStreams =  LiveStream::where('status', 1)->whereNotIn('user_id', [$id])->orderBy('created_at', 'DESC')->take(4)->get();
 
         foreach ($popularChannels as $popularChannel ){

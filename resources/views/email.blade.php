@@ -1,0 +1,1 @@
+Please verify you email by entering the otp given here <b>{{$otp}}</b>

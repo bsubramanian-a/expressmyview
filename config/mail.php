@@ -33,6 +33,10 @@ return [
     |
     */
 
+    'username' => env('MAIL_FROM_ADDRESS'),
+
+    'password' => env('MAIL_PASSWORD'),
+    
     'mailers' => [
         'smtp' => [
             'transport' => 'smtp',
