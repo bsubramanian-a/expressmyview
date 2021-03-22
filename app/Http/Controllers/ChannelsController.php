@@ -26,7 +26,7 @@ class ChannelsController extends Controller
     }
 
     /**
-     * Display a listing of the resource.
+     * Display a listing of the resources.
      *
      * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
