@@ -22,72 +22,89 @@
             <div class="col-md-8">
                 <div class="single-video-left">
                     <div class="single-video live-strm">
-                      <div class="alert alert-primary">
+                    
+                      <div class="row">
+                          <div class="col-md-6">
+                          <div class="text-left">
+                          <div class="alert alert-primary">
                       <span id="connectionState"></span></div>
-                        <div id="buttons-container" class="row justify-content-end">
-                          <div class="col-md-2 text-center">
-                              <button id="golive-btn" type="button" class="btn btn-block btn-success btn-lg">
-                                  <i id="golive-icon" class="fas fa-podcast"></i>
-                              </button>
+                            <!-- <label for="volumelevel">Volume Strength: </label> -->
+                            <meter id="volumelevel" class="volume-meter" value="0" min="0" max="1"></meter>
+                          </div> 
                           </div>
+                          <div class="col-md-6">
+                          <div id="buttons-container" class="row justify-content-end">
+                         
+                         <div class="col-md-1 ">
+                             <button id="golive-btn" type="button" class="btn btn-block btn-success go-live-btn">
+                                 <i id="golive-icon" class="fas fa-podcast"></i>
+                             </button>
+                         </div>
 
-                          <div id="audio-controls" class="col-md-1 text-center btn-group">
-                                <div class="mic-selection1">
-                          <div id="mic-toggle" class="col-md-1 text-center btn-group">
-                              <div class="mic-selection">
-                                  <button id="mictoggle-btn" type="button" class="mic-selection">
-                                      <i id="mictoggle-icon" class="fas fa-microphone"></i>
-                                  </button>
-                                  <button id="mic-dropdown" type="button"
-                                        class="tgl-drop dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"
-                                        aria-haspopup="true" aria-expanded="false">
-                                        <span class="sr-only">Toggle Dropdown</span>
-                                    </button>
-                                    <div id="mic-list" class="dropdown-menu">
-                                      <select name="mic-list-select" id="mic-list-select" class="dropdown-item"></select>
-                                    </div>
+                         <div class="col-md-1">
+                         <div id="audio-controls" class=" text-center btn-group">
+                               <div class="mic-selection1">
+                         <div id="mic-toggle" class="btn-group">
+                             <div class="mic-selection">
+                                 <button id="mictoggle-btn" type="button" class="mic-selection">
+                                     <i id="mictoggle-icon" class="fas fa-microphone"></i>
+                                 </button>
+                                 <button id="mic-dropdown" type="button"
+                                       class="tgl-drop dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"
+                                       aria-haspopup="true" aria-expanded="false">
+                                       <span class="sr-only">Toggle Dropdown</span>
+                                   </button>
+                                   <div id="mic-list" class="dropdown-menu">
+                                     <select name="mic-list-select" id="mic-list-select" class="dropdown-item"></select>
+                                   </div>
 
-                              </div>
+                             </div>
+                         </div>
+                             </div>
+                         </div>
+                         </div>
+
+
+
+                         <div class="col-md-1">
+                         <div id="video-controls" class=" text-center btn-group">
+
+                           <div class="mic-selection1">
+                         <div id="video-toggle" class="text-center btn-group">
+                             <div class="mic-selection">
+                                 <button id="camtoggle-btn" type="button" class="mic-selection">
+                                     <i id="camtoggle-icon" class="fas fa-video"></i>
+                                 </button>
+                                 <button id="cam-dropdown" type="button"
+                                       class="tgl-drop dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"
+                                       aria-haspopup="true" aria-expanded="false">
+                                       <span class="sr-only">Toggle Dropdown</span>
+                                   </button>
+                                   <div id="camera-list" class="dropdown-menu dropdown-menu-right">
+                                     <select name="camera-list-select" id="camera-list-select"></select>
+                                   </div>
+                             </div>
+                         </div>
+                             </div>
+                         </div>
+                         </div>
+
+
+
+
+                           <div class="col-md-1">
+                               <button id="exit-btn" type="button" class="btn btn-block btn-danger stop-stream-btn">
+                                   <i id="exit-icon" class="fas fa-phone-slash"></i>
+                               </button>
+                           </div>
+
+
+                       </div>
                           </div>
-                              </div>
-                          </div>
+                      </div>
+                      
 
-
-
-                          <div id="video-controls" class="col-md-1 text-center btn-group">
-
-                            <div class="mic-selection1">
-                          <div id="video-toggle" class="col-md-1 text-center btn-group">
-                              <div class="mic-selection">
-                                  <button id="camtoggle-btn" type="button" class="mic-selection">
-                                      <i id="camtoggle-icon" class="fas fa-video"></i>
-                                  </button>
-                                  <button id="cam-dropdown" type="button"
-                                        class="tgl-drop dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"
-                                        aria-haspopup="true" aria-expanded="false">
-                                        <span class="sr-only">Toggle Dropdown</span>
-                                    </button>
-                                    <div id="camera-list" class="dropdown-menu dropdown-menu-right">
-                                      <select name="camera-list-select" id="camera-list-select"></select>
-                                    </div>
-                              </div>
-                          </div>
-                              </div>
-                          </div>
-
-
-
-
-                            <div class="col-md-2 text-center">
-                                <button id="exit-btn" type="button" class="btn btn-block btn-danger btn-lg">
-                                    <i id="exit-icon" class="fas fa-phone-slash"></i>
-                                </button>
-                            </div>
-
-
-                        </div>
-                        <div class="row">
-                        <div class="col-md-12" id="video-section">
+                        <div id="video-section">
                           <div id='host-video'></div>
                           <div id='host-screen'></div>
                         </div>
@@ -104,7 +121,7 @@
                           </div>
 
                         </div>
-                      </div>
+
                         <!-- <div id='extraplayer'>
                           <video id='fluidplayerdiv' controls>
                             <source src='' type='video/mp4' />

@@ -3,7 +3,7 @@ import AgoraRTM from 'agora-rtm-sdk';
 import { createStore } from 'redux';
 import audience from './audience';
 import devices from './devices';
-import connectedViewers from './connectedViewers';
+import connectedHosts from './connectedHosts';
 
 $(function(){
   console.log(
@@ -15,8 +15,9 @@ $(function(){
 
   let volumeLevelTimers = {};
   let abruptClose = null;
+  const hostTracks = {};
 
-  const hostvideoDiv = $('#external-broadcasts-container');
+  const streamsContainer = $('#external-broadcasts-container');
   const spinnerDiv = $('#spinner');
   spinnerDiv.show();
   const posterimage = $('#posterimage');
@@ -34,11 +35,23 @@ $(function(){
   audienceStore.subscribe(() => {
     const audienceState = audienceStore.getState();
     $('#connectionState').html(audienceState.connectionState);
+    if (audienceState.connectionState === 'CONNECTED') {
+      posterimage.show();
+      $('#statusScreen').show();
+      $('#statusScreen span').html('You are connected to the live stream! Host is yet to join.');
+      spinnerDiv.show()
+    }
+    if (audienceState.connectionState !== 'CONNECTED') {
+      posterimage.show();
+      $('#statusScreen').show();
+      $('#statusScreen span').html('You are not connected to the live stream!');
+      spinnerDiv.show()
+    }
   });
 
-  const viewersStore = createStore(connectedViewers);
-  viewersStore.subscribe(() => {
-    const viewersState = viewersStore.getState();
+  const hostsStore = createStore(connectedHosts);
+  hostsStore.subscribe(() => {
+    const viewersState = hostsStore.getState();
     console.log(viewersState);
     $('#liveviewerscount').html(viewersState.viewersCount);
     if (!viewersState.hostConnected ) {
@@ -47,6 +60,7 @@ $(function(){
       $('#statusScreen span').html('Host got disconnected or left the broadcast');
       spinnerDiv.show()
     }
+
     if (viewersState.numVideoTracks === 0 && viewersState.noOfHosts > 0) {
       posterimage.show();
       $('#statusScreen').show()
@@ -57,6 +71,40 @@ $(function(){
       posterimage.hide();
       $('#statusScreen').hide()
       spinnerDiv.hide()
+    }
+    if (viewersState.numVideoTracks > 1 && viewersState.noOfHosts > 1) {
+      console.log('multiple video tracks detected');
+      console.log(hostTracks);
+      let counter = 0;
+      for (const hostid in hostTracks) {
+        if (hostTracks[hostid].length > 0) {
+          hostTracks[hostid].forEach((val, idx) => {
+            const { divname, mediaType } = val;
+            console.log(divname, mediaType);
+            if (mediaType === 'video') {
+              counter = counter + 1;
+              $('#'+divname).css({position: 'absolute'});
+              if (counter === viewersState.numVideoTracks) {
+                $('#'+divname).addClass("col-md-3");
+                $('#'+divname).css({'z-index': 500, width: '100%', height: 'auto'});
+              }
+            }
+          });
+        }
+      }
+    }
+    if (viewersState.numVideoTracks === 1 && viewersState.noOfHosts === 1) {
+      for (const hostid in hostTracks) {
+        if (hostTracks[hostid].length > 0) {
+          hostTracks[hostid].forEach((val, idx) => {
+            const { divname, mediaType } = val;
+            if (mediaType === 'video') {
+              $('#'+divname).css({position: 'relative', 'z-index': 'auto'});
+              $('#'+divname).removeClass("col-md-3");
+            }
+          });
+        }
+      }
     }
   });
 
@@ -226,32 +274,37 @@ $(function(){
 
     bclient.client.on('user-published', async (user, mediaType) => {
       try {
+        if (!(user.uid in hostTracks)) {
+          hostTracks[user.uid] = [];
+        }
         await bclient.client.subscribe(user, mediaType);
         if (mediaType === 'video') {
-          const { numVideoTracks } = audienceStore.getState();
           const remoteVideoTrack = user.videoTrack;
           const playerDiv = document.createElement('div');
-          // playerDiv.id = numVideoTracks.toString() + '_' + user.uid.toString();
-          playerDiv.id = user.uid.toString();
+          const idvname = 'video_'+remoteVideoTrack.getTrackId();
+          playerDiv.id = idvname;
           $('#external-broadcasts-container').append(playerDiv);
-          viewersStore.dispatch({type: 'INCREASE_VTRACK_COUNT'});
+          hostsStore.dispatch({type: 'INCREASE_VTRACK_COUNT'});
           remoteVideoTrack.play(playerDiv);
+          hostTracks[user.uid].push({divname: idvname, mediaType});
         }
         if (mediaType === 'audio') {
           const { numAudioTracks } = audienceStore.getState();
           const remoteAudioTrack = user.audioTrack;
           const audioPlayerDiv = document.createElement('div');
-          // audioPlayerDiv.id = numAudioTracks.toString() + '_' + user.uid.toString() + 'audio';
-          audioPlayerDiv.id = user.uid.toString() + 'audio';
+          const idaname = 'audio_'+remoteAudioTrack.getTrackId();
+          audioPlayerDiv.id = idaname;
           $('#external-broadcasts-container').append(audioPlayerDiv);
-          viewersStore.dispatch({type: 'INCREASE_ATRACK_COUNT'});
+          hostsStore.dispatch({type: 'INCREASE_ATRACK_COUNT'});
           if (user.uid in volumeLevelTimers === false) {
             volumeLevelTimers[user.uid] = setInterval(() => {
               const volLevel = remoteAudioTrack.getVolumeLevel();
+              $('#volumelevel').val(volLevel);
               // console.log('Volume Level of '+user.uid+': ' + volLevel);
-            }, 1000);
+            }, 200);
           }
           remoteAudioTrack.play(audioPlayerDiv);
+          hostTracks[user.uid].push({divname: idaname, mediaType});
         }
       } catch(error) {
         console.log('Error in user-published:' + error);
@@ -259,15 +312,17 @@ $(function(){
     });
 
     bclient.client.on('user-unpublished', (user, mediaType) => {
+      console.log(user.uid,hostTracks);
+      const divname = hostTracks[user.uid].filter((lld) => {return lld.mediaType === mediaType});
+      const newlist = hostTracks[user.uid].filter((lld) => {return lld.mediaType !== mediaType});
+      hostTracks[user.uid] = newlist;
       if (mediaType === 'video') {
-        $('#'+user.uid.toString()).remove();
-        console.log('user unpulished video track: '+ user);
-        viewersStore.dispatch({type: 'DECREASE_VTRACK_COUNT'});
+        $('#'+divname[0].divname).remove();
+        hostsStore.dispatch({type: 'DECREASE_VTRACK_COUNT'});
       }
       if (mediaType === 'audio') {
-        $('#'+user.uid.toString()+'audio').remove();
-        console.log('user unpulished audio track: '+ user);
-        viewersStore.dispatch({type: 'DECREASE_ATRACK_COUNT'});
+        $('#'+divname[0].divname).remove();
+        hostsStore.dispatch({type: 'DECREASE_ATRACK_COUNT'});
         if (user.uid in volumeLevelTimers === true) {
           clearInterval(volumeLevelTimers[user.uid]);
           delete volumeLevelTimers[user.uid];
@@ -277,20 +332,21 @@ $(function(){
 
     bclient.client.on('user-joined', (user) => {
       // console.log('host joined', user);
-      viewersStore.dispatch({type: 'HOST_CONNECTED', payload: { hostConnected: true }});
-      viewersStore.dispatch({type: 'ADD_HOST_TO_LIST', payload: {host: user}});
-      viewersStore.dispatch({type: 'INCREASE_VIEWERS_COUNT'})
+      hostsStore.dispatch({type: 'HOST_CONNECTED', payload: { hostConnected: true }});
+      hostsStore.dispatch({type: 'ADD_HOST_TO_LIST', payload: {host: user}});
+      hostsStore.dispatch({type: 'INCREASE_VIEWERS_COUNT'})
     });
 
     bclient.client.on('user-left', (user) => {
       // console.log('host left', user);
-      viewersStore.dispatch({type: 'HOST_CONNECTED', payload: { hostConnected: false }});
-      viewersStore.dispatch({type: 'REMOVE_HOST_FROM_LIST', payload: {hostid: user.uid}});
-      viewersStore.dispatch({type: 'DECREASE_VIEWERS_COUNT'})
+      hostsStore.dispatch({type: 'HOST_CONNECTED', payload: { hostConnected: false }});
+      hostsStore.dispatch({type: 'REMOVE_HOST_FROM_LIST', payload: {hostid: user.uid}});
+      hostsStore.dispatch({type: 'DECREASE_VIEWERS_COUNT'})
     });
 
     const uid = await bclient.client.join(options.appId, options.channel, options.token, null);
     $('#exit-btn').prop('disabled', false);
+    $('#golive-btn').prop('disabled', true);
     await JoinChat();
   };
 
@@ -304,6 +360,7 @@ $(function(){
     RTM.rtmclient.logout();
     bclient.client = null;
     $('#golive-btn').prop('disabled', false);
+    $('#exit-btn').prop('disabled', true);
   };
 
   joinLiveStream();

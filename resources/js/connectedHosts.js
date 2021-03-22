@@ -10,7 +10,7 @@ const initialState = {
   numVideoTracks: 0,
 };
 
-const connectedViewers =(state = initialState, action) => {
+const connectedHosts =(state = initialState, action) => {
   switch (action.type) {
     case 'INCREASE_VIEWERS_COUNT':
     {
@@ -75,4 +75,4 @@ const connectedViewers =(state = initialState, action) => {
   }
 };
 
-export default connectedViewers;
+export default connectedHosts;

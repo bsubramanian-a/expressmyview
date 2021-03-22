@@ -3088,8 +3088,9 @@ var initialState = {
   webcamOff: false,
   micMuted: false,
   connectionState: 'DISCONNECTED',
-  localVideoTrackavailable: false,
-  localAudioTrackavailable: false
+  remoteVideoTrackavailable: false,
+  remoteScreenTrackavailable: false,
+  remoteAudioTrackavailable: false
 };
 
 var audience = function audience() {
@@ -3123,17 +3124,25 @@ var audience = function audience() {
 
     case 'AUDIO_TRACK_AVAILABLE':
       {
-        var localAudioTrackavailable = action.payload.localAudioTrackavailable;
+        var remoteAudioTrackavailable = action.payload.remoteAudioTrackavailable;
         return _objectSpread(_objectSpread({}, state), {}, {
-          localAudioTrackavailable: localAudioTrackavailable
+          remoteAudioTrackavailable: remoteAudioTrackavailable
+        });
+      }
+
+    case 'SCREEN_TRACK_AVAILABLE':
+      {
+        var remoteScreenTrackavailable = action.payload.remoteScreenTrackavailable;
+        return _objectSpread(_objectSpread({}, state), {}, {
+          remoteScreenTrackavailable: remoteScreenTrackavailable
         });
       }
 
     case 'VIDEO_TRACK_AVAILABLE':
       {
-        var localVideoTrackavailable = action.payload.localVideoTrackavailable;
+        var remoteVideoTrackavailable = action.payload.remoteVideoTrackavailable;
         return _objectSpread(_objectSpread({}, state), {}, {
-          localVideoTrackavailable: localVideoTrackavailable
+          remoteVideoTrackavailable: remoteVideoTrackavailable
         });
       }
 
@@ -3146,10 +3155,10 @@ var audience = function audience() {
 
 /***/ }),
 
-/***/ "./resources/js/connectedViewers.js":
-/*!******************************************!*\
-  !*** ./resources/js/connectedViewers.js ***!
-  \******************************************/
+/***/ "./resources/js/connectedHosts.js":
+/*!****************************************!*\
+  !*** ./resources/js/connectedHosts.js ***!
+  \****************************************/
 /*! exports provided: default */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
@@ -3173,7 +3182,7 @@ var initialState = {
   numVideoTracks: 0
 };
 
-var connectedViewers = function connectedViewers() {
+var connectedHosts = function connectedHosts() {
   var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : initialState;
   var action = arguments.length > 1 ? arguments[1] : undefined;
 
@@ -3263,7 +3272,7 @@ var connectedViewers = function connectedViewers() {
   }
 };
 
-/* harmony default export */ __webpack_exports__["default"] = (connectedViewers);
+/* harmony default export */ __webpack_exports__["default"] = (connectedHosts);
 
 /***/ }),
 
@@ -3427,7 +3436,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var redux__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! redux */ "./node_modules/redux/es/redux.js");
 /* harmony import */ var _audience__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./audience */ "./resources/js/audience.js");
 /* harmony import */ var _devices__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./devices */ "./resources/js/devices.js");
-/* harmony import */ var _connectedViewers__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./connectedViewers */ "./resources/js/connectedViewers.js");
+/* harmony import */ var _connectedHosts__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./connectedHosts */ "./resources/js/connectedHosts.js");
 
 
 function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } }
@@ -3444,7 +3453,8 @@ $(function () {
   console.log('agora sdk version: ' + agora_rtc_sdk_ng__WEBPACK_IMPORTED_MODULE_1___default.a.VERSION + ' compatible: ' + agora_rtc_sdk_ng__WEBPACK_IMPORTED_MODULE_1___default.a.checkSystemRequirements());
   var volumeLevelTimers = {};
   var abruptClose = null;
-  var hostvideoDiv = $('#external-broadcasts-container');
+  var hostTracks = {};
+  var streamsContainer = $('#external-broadcasts-container');
   var spinnerDiv = $('#spinner');
   spinnerDiv.show();
   var posterimage = $('#posterimage');
@@ -3461,10 +3471,24 @@ $(function () {
   audienceStore.subscribe(function () {
     var audienceState = audienceStore.getState();
     $('#connectionState').html(audienceState.connectionState);
+
+    if (audienceState.connectionState === 'CONNECTED') {
+      posterimage.show();
+      $('#statusScreen').show();
+      $('#statusScreen span').html('You are connected to the live stream! Host is yet to join.');
+      spinnerDiv.show();
+    }
+
+    if (audienceState.connectionState !== 'CONNECTED') {
+      posterimage.show();
+      $('#statusScreen').show();
+      $('#statusScreen span').html('You are not connected to the live stream!');
+      spinnerDiv.show();
+    }
   });
-  var viewersStore = Object(redux__WEBPACK_IMPORTED_MODULE_3__["createStore"])(_connectedViewers__WEBPACK_IMPORTED_MODULE_6__["default"]);
-  viewersStore.subscribe(function () {
-    var viewersState = viewersStore.getState();
+  var hostsStore = Object(redux__WEBPACK_IMPORTED_MODULE_3__["createStore"])(_connectedHosts__WEBPACK_IMPORTED_MODULE_6__["default"]);
+  hostsStore.subscribe(function () {
+    var viewersState = hostsStore.getState();
     console.log(viewersState);
     $('#liveviewerscount').html(viewersState.viewersCount);
 
@@ -3486,6 +3510,59 @@ $(function () {
       posterimage.hide();
       $('#statusScreen').hide();
       spinnerDiv.hide();
+    }
+
+    if (viewersState.numVideoTracks > 1 && viewersState.noOfHosts > 1) {
+      (function () {
+        console.log('multiple video tracks detected');
+        console.log(hostTracks);
+        var counter = 0;
+
+        for (var hostid in hostTracks) {
+          if (hostTracks[hostid].length > 0) {
+            hostTracks[hostid].forEach(function (val, idx) {
+              var divname = val.divname,
+                  mediaType = val.mediaType;
+              console.log(divname, mediaType);
+
+              if (mediaType === 'video') {
+                counter = counter + 1;
+                $('#' + divname).css({
+                  position: 'absolute'
+                });
+
+                if (counter === viewersState.numVideoTracks) {
+                  $('#' + divname).addClass("col-md-3");
+                  $('#' + divname).css({
+                    'z-index': 500,
+                    width: '100%',
+                    height: 'auto'
+                  });
+                }
+              }
+            });
+          }
+        }
+      })();
+    }
+
+    if (viewersState.numVideoTracks === 1 && viewersState.noOfHosts === 1) {
+      for (var hostid in hostTracks) {
+        if (hostTracks[hostid].length > 0) {
+          hostTracks[hostid].forEach(function (val, idx) {
+            var divname = val.divname,
+                mediaType = val.mediaType;
+
+            if (mediaType === 'video') {
+              $('#' + divname).css({
+                position: 'relative',
+                'z-index': 'auto'
+              });
+              $('#' + divname).removeClass("col-md-3");
+            }
+          });
+        }
+      }
     }
   }); // Level: 1: INFO, 0: DEBUG, 4: NONE, 2: WARNING, 3: ERROR
 
@@ -3743,64 +3820,77 @@ $(function () {
               });
               bclient.client.on('user-published', /*#__PURE__*/function () {
                 var _ref4 = _asyncToGenerator( /*#__PURE__*/_babel_runtime_regenerator__WEBPACK_IMPORTED_MODULE_0___default.a.mark(function _callee4(user, mediaType) {
-                  var _audienceStore$getSta, numVideoTracks, remoteVideoTrack, playerDiv, _audienceStore$getSta2, numAudioTracks, remoteAudioTrack, audioPlayerDiv;
+                  var remoteVideoTrack, playerDiv, idvname, _audienceStore$getSta, numAudioTracks, remoteAudioTrack, audioPlayerDiv, idaname;
 
                   return _babel_runtime_regenerator__WEBPACK_IMPORTED_MODULE_0___default.a.wrap(function _callee4$(_context4) {
                     while (1) {
                       switch (_context4.prev = _context4.next) {
                         case 0:
                           _context4.prev = 0;
-                          _context4.next = 3;
+
+                          if (!(user.uid in hostTracks)) {
+                            hostTracks[user.uid] = [];
+                          }
+
+                          _context4.next = 4;
                           return bclient.client.subscribe(user, mediaType);
 
-                        case 3:
+                        case 4:
                           if (mediaType === 'video') {
-                            _audienceStore$getSta = audienceStore.getState(), numVideoTracks = _audienceStore$getSta.numVideoTracks;
                             remoteVideoTrack = user.videoTrack;
-                            playerDiv = document.createElement('div'); // playerDiv.id = numVideoTracks.toString() + '_' + user.uid.toString();
-
-                            playerDiv.id = user.uid.toString();
+                            playerDiv = document.createElement('div');
+                            idvname = 'video_' + remoteVideoTrack.getTrackId();
+                            playerDiv.id = idvname;
                             $('#external-broadcasts-container').append(playerDiv);
-                            viewersStore.dispatch({
+                            hostsStore.dispatch({
                               type: 'INCREASE_VTRACK_COUNT'
                             });
                             remoteVideoTrack.play(playerDiv);
+                            hostTracks[user.uid].push({
+                              divname: idvname,
+                              mediaType: mediaType
+                            });
                           }
 
                           if (mediaType === 'audio') {
-                            _audienceStore$getSta2 = audienceStore.getState(), numAudioTracks = _audienceStore$getSta2.numAudioTracks;
+                            _audienceStore$getSta = audienceStore.getState(), numAudioTracks = _audienceStore$getSta.numAudioTracks;
                             remoteAudioTrack = user.audioTrack;
-                            audioPlayerDiv = document.createElement('div'); // audioPlayerDiv.id = numAudioTracks.toString() + '_' + user.uid.toString() + 'audio';
-
-                            audioPlayerDiv.id = user.uid.toString() + 'audio';
+                            audioPlayerDiv = document.createElement('div');
+                            idaname = 'audio_' + remoteAudioTrack.getTrackId();
+                            audioPlayerDiv.id = idaname;
                             $('#external-broadcasts-container').append(audioPlayerDiv);
-                            viewersStore.dispatch({
+                            hostsStore.dispatch({
                               type: 'INCREASE_ATRACK_COUNT'
                             });
 
                             if (user.uid in volumeLevelTimers === false) {
                               volumeLevelTimers[user.uid] = setInterval(function () {
-                                var volLevel = remoteAudioTrack.getVolumeLevel(); // console.log('Volume Level of '+user.uid+': ' + volLevel);
-                              }, 1000);
+                                var volLevel = remoteAudioTrack.getVolumeLevel();
+                                $('#volumelevel').val(volLevel); // console.log('Volume Level of '+user.uid+': ' + volLevel);
+                              }, 200);
                             }
 
                             remoteAudioTrack.play(audioPlayerDiv);
+                            hostTracks[user.uid].push({
+                              divname: idaname,
+                              mediaType: mediaType
+                            });
                           }
 
-                          _context4.next = 10;
+                          _context4.next = 11;
                           break;
 
-                        case 7:
-                          _context4.prev = 7;
+                        case 8:
+                          _context4.prev = 8;
                           _context4.t0 = _context4["catch"](0);
                           console.log('Error in user-published:' + _context4.t0);
 
-                        case 10:
+                        case 11:
                         case "end":
                           return _context4.stop();
                       }
                     }
-                  }, _callee4, null, [[0, 7]]);
+                  }, _callee4, null, [[0, 8]]);
                 }));
 
                 return function (_x, _x2) {
@@ -3808,18 +3898,25 @@ $(function () {
                 };
               }());
               bclient.client.on('user-unpublished', function (user, mediaType) {
+                console.log(user.uid, hostTracks);
+                var divname = hostTracks[user.uid].filter(function (lld) {
+                  return lld.mediaType === mediaType;
+                });
+                var newlist = hostTracks[user.uid].filter(function (lld) {
+                  return lld.mediaType !== mediaType;
+                });
+                hostTracks[user.uid] = newlist;
+
                 if (mediaType === 'video') {
-                  $('#' + user.uid.toString()).remove();
-                  console.log('user unpulished video track: ' + user);
-                  viewersStore.dispatch({
+                  $('#' + divname[0].divname).remove();
+                  hostsStore.dispatch({
                     type: 'DECREASE_VTRACK_COUNT'
                   });
                 }
 
                 if (mediaType === 'audio') {
-                  $('#' + user.uid.toString() + 'audio').remove();
-                  console.log('user unpulished audio track: ' + user);
-                  viewersStore.dispatch({
+                  $('#' + divname[0].divname).remove();
+                  hostsStore.dispatch({
                     type: 'DECREASE_ATRACK_COUNT'
                   });
 
@@ -3831,37 +3928,37 @@ $(function () {
               });
               bclient.client.on('user-joined', function (user) {
                 // console.log('host joined', user);
-                viewersStore.dispatch({
+                hostsStore.dispatch({
                   type: 'HOST_CONNECTED',
                   payload: {
                     hostConnected: true
                   }
                 });
-                viewersStore.dispatch({
+                hostsStore.dispatch({
                   type: 'ADD_HOST_TO_LIST',
                   payload: {
                     host: user
                   }
                 });
-                viewersStore.dispatch({
+                hostsStore.dispatch({
                   type: 'INCREASE_VIEWERS_COUNT'
                 });
               });
               bclient.client.on('user-left', function (user) {
                 // console.log('host left', user);
-                viewersStore.dispatch({
+                hostsStore.dispatch({
                   type: 'HOST_CONNECTED',
                   payload: {
                     hostConnected: false
                   }
                 });
-                viewersStore.dispatch({
+                hostsStore.dispatch({
                   type: 'REMOVE_HOST_FROM_LIST',
                   payload: {
                     hostid: user.uid
                   }
                 });
-                viewersStore.dispatch({
+                hostsStore.dispatch({
                   type: 'DECREASE_VIEWERS_COUNT'
                 });
               });
@@ -3871,10 +3968,11 @@ $(function () {
             case 13:
               uid = _context5.sent;
               $('#exit-btn').prop('disabled', false);
-              _context5.next = 17;
+              $('#golive-btn').prop('disabled', true);
+              _context5.next = 18;
               return JoinChat();
 
-            case 17:
+            case 18:
             case "end":
               return _context5.stop();
           }
@@ -3908,8 +4006,9 @@ $(function () {
               RTM.rtmclient.logout();
               bclient.client = null;
               $('#golive-btn').prop('disabled', false);
+              $('#exit-btn').prop('disabled', true);
 
-            case 7:
+            case 8:
             case "end":
               return _context6.stop();
           }

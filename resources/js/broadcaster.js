@@ -3,7 +3,6 @@ import AgoraRTM from 'agora-rtm-sdk';
 import { createStore } from 'redux';
 import host from './host';
 import devices from './devices';
-import connectedViewers from './connectedViewers';
 import deviceInfo from './deviceInfo';
 
 // var AGORA_APP_ID = '{{ env('AGORA_APP_ID') }}';
@@ -43,7 +42,7 @@ $(function(){
   const hostStore = createStore(host);
   hostStore.subscribe(() => {
     const hostState = hostStore.getState();
-
+    console.log(hostState);
     if (hostState.connectionState === 'CONNECTED' || hostState.connectionState === 'DISCONNECTED') {
       spinnerDiv.hide();
       posterimage.hide();
@@ -71,6 +70,13 @@ $(function(){
     }
     if (hostState.localScreenTrackavailable) {
       hostscreenDiv.show();
+    }
+    if ((hostState.localScreenTrackavailable && !hostState.localVideoTrackavailable)
+      || (!hostState.localScreenTrackavailable && hostState.localVideoTrackavailable)) {
+      console.log('reset the css here');
+      hostvideoDiv.css({position: 'relative'});
+      hostvideoDiv.removeClass("col-md-3");
+      hostscreenDiv.css({position: 'relative', 'z-index': 'auto'});
     }
     if (!hostState.localVideoTrackavailable && !hostState.localScreenTrackavailable) {
       console.log(hostState);
@@ -126,7 +132,6 @@ $(function(){
   const devicesStore = createStore(devices);
   devicesStore.subscribe(() => {
     const devicesState = devicesStore.getState();
-    console.log(devicesState);
     if (devicesState.camList !== camList) {
       camList = devicesState.camList;
       const camdd = $('#camera-list-select');
@@ -147,11 +152,13 @@ $(function(){
     }
   });
 
-  const viewersStore = createStore(connectedViewers);
-  viewersStore.subscribe(() => {
-    const viewersState = viewersStore.getState();
-    $('#liveviewerscount').html('<i class="fas fa-eye"></i> '+viewersState.viewersCount);
-  });
+  // const viewersStore = createStore(connectedViewers);
+  // viewersStore.subscribe(() => {
+  //   const viewersState = viewersStore.getState();
+  //   $('#liveviewerscount').html('<i class="fas fa-eye"></i> '+viewersState.viewersCount);
+  // });
+
+  $('#liveviewerscount').html('<i class="fas fa-eye"></i> '+'xx');
 
   // https://docs.agora.io/en/Agora%20Platform/token?platform=All%20Platforms
   // https://docs.agora.io/en/Agora%20Platform/token_server
@@ -416,6 +423,7 @@ $(function(){
                   bclient.client.unpublish(bclient.localScreenTrack)
                   .then(() => {
                     bclient.localScreenTrack = null;
+                    console.log('bclient.client.unpublish(bclient.localScreenTrack)');
                     hostStore.dispatch({type: 'SCREEN_TRACK_AVAILABLE', payload: { localScreenTrackavailable: false }});
                     hostStore.dispatch({type: 'SET_WEBCAM_OFF', payload: {flag: true}});
                     $('#camera-list-select').prop("selectedIndex", 0);
@@ -522,6 +530,9 @@ $(function(){
           bclient.client.unpublish(bclient.localScreenTrack)
           .then(() => {
             bclient.localScreenTrack.close();
+            bclient.localScreenTrack = null;
+            console.log('switchin to webcam, localScreenTrack unpublished');
+            hostStore.dispatch({type: 'SCREEN_TRACK_AVAILABLE', payload: { localScreenTrackavailable: false }});
           })
           .catch((error) => {
             console.log(error);
@@ -539,6 +550,8 @@ $(function(){
             bclient.screenclient.leave();
             bclient.screenclient = null;
             bclient.localAddScreenTrack = null;
+            console.log('switchin to webcam, localAddScreenTrack unpublished');
+            hostStore.dispatch({type: 'SCREEN_TRACK_AVAILABLE', payload: { localScreenTrackavailable: false }});
           })
           .catch((error) => {console.log(error)});
           return;
@@ -602,12 +615,12 @@ $(function(){
 
     bclient.client.on('user-joined', (user) => {
       console.log('user-joined', user);
-      viewersStore.dispatch({type: 'INCREASE_VIEWERS_COUNT'})
+      // viewersStore.dispatch({type: 'INCREASE_VIEWERS_COUNT'})
     });
 
     bclient.client.on('user-left', (user) => {
       console.log('user-left', user);
-      viewersStore.dispatch({type: 'DECREASE_VIEWERS_COUNT'})
+      // viewersStore.dispatch({type: 'DECREASE_VIEWERS_COUNT'})
     });
 
     const uid = await bclient.client.join(options.appId, options.channel, options.token, null);
@@ -622,7 +635,7 @@ $(function(){
       }
       volumeLevelTimer = setInterval(() => {
         const volLevel = bclient.localAudioTrack.getVolumeLevel();
-        // console.log('Volume Level: ' + volLevel);
+        $('#volumelevel').val(volLevel);
       }, 1000);
       $('#mictoggle-btn').prop('disabled', false);
       $('#mictoggle-icon').css('color','green');
@@ -691,8 +704,9 @@ $(function(){
     };
     volumeLevelTimer = setInterval(() => {
       const volLevel = bclient.localAudioTrack.getVolumeLevel();
+      $('#volumelevel').val(volLevel);
       // console.log('Volume Level: ' + volLevel);
-    }, 1000);
+    }, 200);
     $('#mictoggle-btn').prop('disabled', false);
     $('#mictoggle-icon').css('color','green');
   })

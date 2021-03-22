@@ -3,8 +3,9 @@ const initialState = {
   webcamOff: false,
   micMuted: false,
   connectionState: 'DISCONNECTED',
-  localVideoTrackavailable: false,
-  localAudioTrackavailable: false,
+  remoteVideoTrackavailable: false,
+  remoteScreenTrackavailable: false,
+  remoteAudioTrackavailable: false,
 };
 
 const audience = (state = initialState, action) => {
@@ -30,14 +31,20 @@ const audience = (state = initialState, action) => {
 
     case 'AUDIO_TRACK_AVAILABLE':
     {
-      const { localAudioTrackavailable } = action.payload;
-      return { ...state, localAudioTrackavailable };
+      const { remoteAudioTrackavailable } = action.payload;
+      return { ...state, remoteAudioTrackavailable };
+    }
+
+    case 'SCREEN_TRACK_AVAILABLE':
+    {
+      const { remoteScreenTrackavailable } = action.payload;
+      return { ...state, remoteScreenTrackavailable };
     }
 
     case 'VIDEO_TRACK_AVAILABLE':
     {
-      const { localVideoTrackavailable } = action.payload;
-      return { ...state, localVideoTrackavailable };
+      const { remoteVideoTrackavailable } = action.payload;
+      return { ...state, remoteVideoTrackavailable };
     }
 
     default:

@@ -26,11 +26,15 @@ Streaming Now - {{ $stream->title }}
                         <div class="single-video live-strm">
                         <span id="connectionState"></span>
                           <div id="buttons-container" class="row justify-content-end">
-                            <!-- <div class="col-md-2 text-center">
+                            <div class="col-md-6 text-center">
+                              <label for="volumelevel">Decible level: </label>
+                              <meter id="volumelevel" value="0" min="0" max="1"></meter>
+                            </div>
+                            <div class="col-md-2 text-center">
                                 <button id="golive-btn" type="button" class="btn btn-block btn-success btn-lg">
                                     <i id="golive-icon" class="fas fa-podcast"></i>
                                 </button>
-                            </div> -->
+                            </div>
 
                               <div class="col-md-2 text-center">
                                   <button id="exit-btn" type="button" class="btn btn-block btn-danger btn-lg">
