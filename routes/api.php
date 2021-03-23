@@ -32,6 +32,7 @@ Route::post('updatePodcast', 'PodcastsController@updatePodcast');
 Route::post('generateToken', 'LiveStreamsController@generateToken');
 Route::post('uploadMedia', 'PodcastsController@uploadMedia');
 Route::post('channelsByUid', 'ChannelsController@channelsByUid');
+Route::post('getAllChannels', 'ChannelsController@getAllChannels');
 Route::post('allLanguages', 'UsersController@allLanguages');
 Route::post('getUploadPodcastDetails', 'UsersController@getUploadPodcastDetails');
 Route::post('uploadPodcastDetails', 'PodcastsController@uploadPodcastDetails');

@@ -22,7 +22,7 @@ class ChannelsController extends Controller
     public function __construct()
     {
         // $this->middleware('verified');
-        $this->middleware('auth')->except('index', 'show', 'about');
+        $this->middleware('auth')->except('index', 'show', 'about', 'createChannel', 'channelsByUid', 'updateChannel', 'deleteChannel', 'getAllChannels');
     }
 
     /**
@@ -341,4 +341,255 @@ class ChannelsController extends Controller
 
         return view('users.channels.verify', compact('channel', 'eligible', 'countries'));
     }
+
+    public function deleteChannel(Request $request)
+    {
+        $id = $request->id;
+        $channel = Channel::find($id);
+        $oldLogoFileName = $channel->logo;
+        $oldBannerFileName = $channel->banner;
+        $podcasts = $channel->podcasts()->count();
+
+        if ($podcasts == 0) {
+            if ($channel->delete()) {
+                if ($oldBannerFileName) {
+                    Storage::disk('s3')->delete('public/app/public/' . $oldBannerFileName);
+                }
+                if ($oldLogoFileName) {
+                    Storage::disk('s3')->delete('public/users/logo/' . $oldLogoFileName);
+                }
+
+                return new Response([
+                    'status' => 1,
+                    'message' => 'Channel deleted successfully.'
+                ]);
+            } else {
+                return new Response([
+                    'status' => 0,
+                    'error' => 'An error occurred. Please try again.'
+                ]);
+            }
+        } else {
+            return new Response([
+                'status' => 0,
+                'error' => 'Channel could not be deleted because it contains podcasts in it. Please delete all podcasts before deleting the channel'
+            ]);
+        }
+    }
+    
+    public function createChannel(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:channels,name',
+        ]);
+
+        if ($validator->fails()) {
+            $error = array(
+                "error" => "Channel name already used, please choose a different one"
+            );
+            return response()->json($error, 200);
+        }else {
+            $name= $request->input('name');
+            $id = $request->input('id');
+            $channel = new Channel();
+            // $logoFilename = null;
+            // if ($request->hasFile('logo')) {
+            //     if ($request->file('logo')->store('public/users/logo')) {
+            //         $logoFilename = $request->file('logo')->hashName();
+            //     } else {
+            //         $error = array(
+            //             "error" => "An error occurred. Please try again"
+            //         );
+            //         return response()->json($error, 200);
+            //     }
+            // }
+
+            // $bannerFilename = null;
+            // if ($request->hasFile('banner')) {
+            //     if ($request->file('banner')->store('public/users/banner')) {
+            //         $bannerFilename = $request->file('banner')->hashName();
+            //     } else {
+            //         Storage::disk('s3')->delete('public/users/logo/' . $logoFilename);
+            //         $error = array(
+            //             "error" => "An error occurred. Please try again"
+            //         );
+            //         return response()->json($error, 200);
+            //     }
+            // }
+
+            if ($request->input('logo')) {
+                $img = $request->input('logo');
+                $logoImageName = null;
+                if (preg_match('/^data:image\/(\w+);base64,/', $img)) {
+                    $data = substr($img, strpos($img, ',') + 1);
+                    $data = base64_decode($data);
+                    $type = explode('/', mime_content_type($img))[1];
+                    $currentDateTime = Carbon\Carbon::now();
+                    $currentDateTimeString = $currentDateTime->toDateTimeString();
+                    $logoImageName = $currentDateTime."_".$name.".".$type;
+                    $p = Storage::disk('s3')->put('public/users/logo/' . $logoImageName, $data, 'public');
+                }
+                else {
+                    return new Response([
+                        'status' => 0,
+                        'message' => 'An error occurred. Please try again.'
+                    ]);
+                }
+            } 
+
+            if ($request->input('banner')) {
+                $img = $request->input('logo');
+                $bannerImageName = null;
+                if (preg_match('/^data:image\/(\w+);base64,/', $img)) {
+                    $data = substr($img, strpos($img, ',') + 1);
+                    $data = base64_decode($data);
+                    $type = explode('/', mime_content_type($img))[1];
+                    $currentDateTime = Carbon\Carbon::now();
+                    $currentDateTimeString = $currentDateTime->toDateTimeString();
+                    $bannerImageName = $currentDateTime."_".$name.".".$type;
+                    $p = Storage::disk('s3')->put('public/users/banner/' . $bannerImageName, $data, 'public');
+                }
+                else {
+                    return new Response([
+                        'status' => 0,
+                        'message' => 'An error occurred. Please try again.'
+                    ]);
+                }
+            } 
+           
+            $channel->user_id = $id;
+            $channel->name = $request->input('name');
+            $channel->description = $request->input('description');
+            $channel->logo = $logoImageName;
+            $channel->banner = $bannerImageName;
+            $channel->facebook = $request->input('facebook');
+            $channel->twitter = $request->input('twitter');
+            $channel->youtube = $request->input('youtube');
+            $channel->instagram = $request->input('instagram');
+            $channel->pinterest = $request->input('pinterest');
+            $channel->linkedin = $request->input('linkedin');
+            $channel->tiktok = $request->input('tiktok');
+
+            if ($channel->save()) {
+                return response()->json("success", 201);
+            } else {
+                $error = array(
+                    "error" => "An error occurred. Please try again"
+                );
+                return response()->json($error, 200);
+            }
+        }
+    }
+   
+    public function updateChannel(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|unique:channels,name',
+        ]);
+
+        $id = $request->input('id');
+        $channel = Channel::find($id);
+        $name= $request->input('name');
+        if ($validator->fails() && ($channel->name != $name)) {
+            $error = array(
+                "error" => "Channel name already used, please choose a different one"
+            );
+            return response()->json($error, 200);
+        }else {
+            if ($request->input('logo')) {
+                $img = $request->input('logo');
+                $logoImageName = null;
+                if (preg_match('/^data:image\/(\w+);base64,/', $img)) {
+                    $data = substr($img, strpos($img, ',') + 1);
+                    $data = base64_decode($data);
+                    $type = explode('/', mime_content_type($img))[1];
+                    $currentDateTime = Carbon\Carbon::now();
+                    $currentDateTimeString = $currentDateTime->toDateTimeString();
+                    $logoImageName = $currentDateTime."_".$name.".".$type;
+                    $p = Storage::disk('s3')->put('public/users/logo/' . $logoImageName, $data, 'public');
+                }else{
+                    $logoImageName = $channel->logo;
+                }
+            }else{
+                $logoImageName = $channel->logo;
+            }
+
+            if ($request->input('banner')) {
+                $img = $request->input('logo');
+                $bannerImageName = null;
+                if (preg_match('/^data:image\/(\w+);base64,/', $img)) {
+                    $data = substr($img, strpos($img, ',') + 1);
+                    $data = base64_decode($data);
+                    $type = explode('/', mime_content_type($img))[1];
+                    $currentDateTime = Carbon\Carbon::now();
+                    $currentDateTimeString = $currentDateTime->toDateTimeString();
+                    $bannerImageName = $currentDateTime."_".$name.".".$type;
+                    $p = Storage::disk('s3')->put('public/users/banner/' . $bannerImageName, $data, 'public');
+                }else{
+                    $bannerImageName = $channel->banner;
+                }
+            } else{
+                 $bannerImageName = $channel->banner;
+            }
+           
+            $channel->name = $request->input('name');
+            $channel->description = $request->input('description');
+            $channel->logo = $logoImageName;
+            $channel->banner = $bannerImageName;
+            $channel->facebook = $request->input('facebook');
+            $channel->twitter = $request->input('twitter');
+            $channel->youtube = $request->input('youtube');
+            $channel->instagram = $request->input('instagram');
+            $channel->pinterest = $request->input('pinterest');
+            $channel->linkedin = $request->input('linkedin');
+            $channel->tiktok = $request->input('tiktok');
+
+            if ($channel->save()) {
+                return response()->json("success", 201);
+            } else {
+                $error = array(
+                    "error" => "An error occurred. Please try again"
+                );
+                return response()->json($error, 200);
+            }
+        }
+    }
+
+
+    public function channelsByUid(Request $request)
+    {
+        $userid    = $request->userid;
+        $channels = Channel::where("user_id",$userid)->get();
+        if ($channels->count() == 0) {
+            $channels = array(
+                "error" => "You have not created any channel, Please create a new channel and upload"
+            );
+            return response()->json($channels, 200);
+        }
+        return response()->json($channels, 200);
+    }
+
+    public function getAllChannels(Request $request)
+    {
+        $userid    = $request->userid;
+        $channels = Channel::all();
+        if(!empty($channels)){
+            foreach($channels as $channel){
+                if($channel["logo"]){
+                    $channel["logoPath"] = Storage::disk('s3')->url("public/users/logo/".$channel['logo']);
+                }
+            }
+            return new Response([
+                'status' => 0,
+                'message' => $channels
+            ]);
+        }
+    
+        $channels = array(
+            "error" => "There is not channel available right now, please try again later"
+        );
+        return response()->json($channels, 200);
+    }
+
+    
 }
