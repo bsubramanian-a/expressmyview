@@ -28,7 +28,6 @@ Route::post('updateChannel', 'ChannelsController@updateChannel');
 Route::post('deleteChannel', 'ChannelsController@deleteChannel');
 Route::post('updatePodcast', 'PodcastsController@updatePodcast');
 Route::post('deletePodcast', 'PodcastsController@deletePodcast');
-Route::post('updatePodcast', 'PodcastsController@updatePodcast');
 Route::post('generateToken', 'LiveStreamsController@generateToken');
 Route::post('uploadMedia', 'PodcastsController@uploadMedia');
 Route::post('channelsByUid', 'ChannelsController@channelsByUid');
